@@ -57,12 +57,20 @@ if [ -n "$cwd" ] && git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&
   git_part="\e[97m[\e[0m${tracking}\e[36m${branch}\e[0m${dirty}${untracked}\e[97m]\e[0m "
 fi
 
-# Model
-model=$(echo "$input" | jq -r '(.model.id // .model) // empty' | sed 's/claude-//' | sed 's/-[0-9].*//')
+# Model: show name + version (e.g. "sonnet 4.6")
+model_id=$(echo "$input" | jq -r '(.model.id // .model) // empty')
+model_display=$(echo "$input" | jq -r '.model.display_name // empty')
+model_name=$(echo "$model_id" | sed 's/claude-//' | sed 's/-[0-9].*//')
+model_ver=$(echo "$model_display" | grep -oE '[0-9]+\.[0-9]+' | head -1)
+# fallback: try extracting version from id
+[ -z "$model_ver" ] && model_ver=$(echo "$model_id" | grep -oE '[0-9]+\.[0-9]+' | head -1)
 model_part=""
-[ -n "$model" ] && model_part=" ${SEP} \e[2m${model}\e[0m"
+if [ -n "$model_name" ]; then
+  model_str="${model_name}${model_ver:+ ${model_ver}}"
+  model_part="\e[2m${model_str}\e[0m"
+fi
 
-# Usage: ctx · 5h · 1w
+# Usage: ctx · 5h · 1w (labels dim, numbers colored by threshold)
 used=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 five=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 week=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
@@ -71,14 +79,20 @@ usage_part=""
 if [ -n "$used" ] || [ -n "$five" ] || [ -n "$week" ]; then
   usage_part=" ${SEP} "
   if [ -n "$used" ]; then
-    usage_part="${usage_part}ctx $(pct_color "$used")"
+    usage_part="${usage_part}\e[2mctx\e[0m $(pct_color "$used")"
     { [ -n "$five" ] || [ -n "$week" ]; } && usage_part="${usage_part} · "
   fi
   if [ -n "$five" ]; then
-    usage_part="${usage_part}5h $(pct_color "$five")"
+    usage_part="${usage_part}\e[2m5h\e[0m $(pct_color "$five")"
     [ -n "$week" ] && usage_part="${usage_part} · "
   fi
-  [ -n "$week" ] && usage_part="${usage_part}1w $(pct_color "$week")"
+  [ -n "$week" ] && usage_part="${usage_part}\e[2m1w\e[0m $(pct_color "$week")"
 fi
 
-printf "%b%b%b%b" "$git_part" "\e[33m${folder}${subproject}\e[0m" "$model_part" "$usage_part"
+# Order: [branch] folder | model | usage
+folder_part="\e[33m${folder}${subproject}\e[0m"
+if [ -n "$model_part" ]; then
+  printf "%b%b %b%b%b" "$git_part" "$folder_part" "${SEP} " "$model_part" "$usage_part"
+else
+  printf "%b%b%b" "$git_part" "$folder_part" "$usage_part"
+fi
