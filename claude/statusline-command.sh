@@ -12,7 +12,7 @@ pct_color() {
   if [ "$int" -ge 90 ]; then
     printf "\e[31m%s%%\e[0m" "$int"
   elif [ "$int" -ge 70 ]; then
-    printf "\e[33m%s%%\e[0m" "$int"
+    printf "\e[93m%s%%\e[0m" "$int"
   else
     printf "\e[96m%s%%\e[0m" "$int"
   fi
