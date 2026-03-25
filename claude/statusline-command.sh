@@ -53,7 +53,8 @@ if [ -n "$cwd" ] && git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&
   tracking=""
   [ "${ahead:-0}" -gt 0 ] 2>/dev/null && tracking="${tracking}\e[32m↑${ahead}\e[0m"
   [ "${behind:-0}" -gt 0 ] 2>/dev/null && tracking="${tracking}\e[31m↓${behind}\e[0m"
-  git_part="\e[97m[\e[0m\e[36m${branch}\e[0m${dirty}${untracked}${tracking}\e[97m]\e[0m "
+  [ -n "$tracking" ] && tracking="${tracking} "
+  git_part="\e[97m[\e[0m${tracking}\e[36m${branch}\e[0m${dirty}${untracked}\e[97m]\e[0m "
 fi
 
 # Model
